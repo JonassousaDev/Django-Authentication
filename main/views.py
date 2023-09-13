@@ -3,10 +3,18 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 # Importe o formulário de registro apropriado
 from .forms import RegisterForm, PostForm
+from .models import Post
 
 @login_required(login_url='/login')
 def home(request):
-    return render(request, 'main/home.html')
+    posts = Post.objects.all()
+
+    if request.method == 'POST':
+        post_id = request.POST.get('post-id')
+        post = Post.objects.filter(id=post_id).first()
+        if post and post.author == request.user:
+            post.delete()
+    return render(request, 'main/home.html', {'posts': posts})
 
 @login_required(login_url='/login')
 def create_post(request):

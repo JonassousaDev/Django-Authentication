@@ -1,4 +1,5 @@
 from django.contrib.auth import login, authenticate
+from django.contrib.auth.models import User, Group
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 # Importe o formulário de registro apropriado
@@ -11,9 +12,27 @@ def home(request):
 
     if request.method == 'POST':
         post_id = request.POST.get('post-id')
-        post = Post.objects.filter(id=post_id).first()
-        if post and post.author == request.user:
-            post.delete()
+        user_id = request.POST.get('user-id')
+
+        if post_id:
+            post = Post.objects.filter(id=post_id).first()
+            if post and (post.author == request.user or request.user.has_perm('auth_.delete_post')):
+                post.delete()
+        elif user_id:
+            user = User.objects.filter(id=user_id).first()
+            if user and request.user.is_staff:
+                try:
+                    group = Group.objects.get(name='default')
+                    group.user_set.remove(user)
+                except Group.DoesNotExist:
+                    pass  # Lidar com a situação em que o grupo não existe
+
+                try:
+                    group = Group.objects.get(name='mod')
+                    group.user_set.remove(user)
+                except Group.DoesNotExist:
+                    pass  # Lidar com a situação em que o grupo não existe
+
     return render(request, 'main/home.html', {'posts': posts})
 
 @login_required(login_url='/login')
@@ -45,3 +64,5 @@ def sign_up(request):
         form = RegisterForm()
 
     return render(request, 'registration/sign_up.html', {'form': form})
+
+
